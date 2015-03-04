@@ -1,0 +1,60 @@
+//Script name:  wh_ZDrag
+//Author:       Jack Wang
+//Date:         03/28/12
+//Version:      1.0
+//Description:  Move selected object(s) or vertex(es) in camera direction 
+//              without affecting screen-space lineup.
+//Usage:        Select object(s) or vertex(es) first. 
+//              LMB-drag to move with auto-scale, MMB-drag without; 
+//              Ctrl-drag to increase accuracy, Shift-drag to decrease.
+//-----------------------------------------------------------------------
+global proc wh_ZDrag()
+{
+    string $context = "wh_ZDragCtx";
+    if (!`draggerContext -exists $context`)
+        draggerContext 
+            -dragCommand  ("wh_ZDragProc "+$context)
+            -cursor       "dolly"
+            -undoMode     "step"
+            $context;
+    setToolTo $context;
+}
+//actual dragging procedure
+global proc wh_ZDragProc(string $context)
+{
+    float  $initPosition[] = `draggerContext -query -anchorPoint $context`;
+    float  $dragPosition[] = `draggerContext -query -dragPoint $context`;
+    int    $button     = `draggerContext -query -button $context`;
+    string $modifier   = `draggerContext -query -modifier $context`;
+
+    int    $sign = sign($dragPosition[0] - $initPosition[0]);
+    float  $precision = ($modifier == "ctrl") ? 0.01 : ($modifier == "shift") ? 1 : 0.1;
+
+    string $panel = `playblast -activeEditor`;
+    string $camera = `modelPanel -q -camera $panel`;
+    vector $camPos = `xform -q -worldSpace -translation $camera`;
+
+    string $selection[] = `ls -sl -flatten`;
+    for ($obj in $selection){
+        if (objectType($obj) == "transform"){
+            vector $objPos = `xform -q -worldSpace -translation $obj`;
+            vector $direction = unit($objPos - $camPos) * $sign * $precision;
+            if ($button == 2)
+                move -r ($direction.x) ($direction.y) ($direction.z) $obj;
+            else if ($button == 1){
+                scale -r -pivot ($camPos.x) ($camPos.y) ($camPos.z) (1 + $sign*$precision) (1 + $sign*$precision) (1 + $sign*$precision) $obj;
+                xform -zeroTransformPivots $obj;
+            }            
+        }
+        else if (`gmatch $obj "*.vtx*"`){
+            vector $objPos = `pointPosition -world $obj`;
+            vector $direction = unit($objPos - $camPos) * $sign * $precision;
+            move -r ($direction.x) ($direction.y) ($direction.z) $obj;
+        }
+        else 
+            warning "Select transform nodes or vertexes only please!";
+    }
+    refresh;
+}
+//run script
+wh_ZDrag();

@@ -1,0 +1,100 @@
+//Camera Heads-up Displayer
+//Author: WangHuan
+//Version: 1.0
+//Date: 04/23/11
+
+global proc float[] camInfo (string $which)
+{
+string $panel = `playblast -activeEditor`;
+string $camera = `modelPanel -q -camera $panel`;
+string $camShape[] = `listRelatives -shapes $camera`;
+float $info[];
+for ($attr in `listAttr -keyable -string ($which+"*") $camera $camShape[0]`)
+    $info[`size $info`] = `getAttr ($camera+"."+$attr)`;
+return $info;
+}
+
+global proc camHUD(string $which)
+{
+int $section = `intSliderGrp -q -v camHUDISG`;
+string $cmd = "camInfo(\""+$which+"\")";
+$which = capitalizeString($which);
+if (`headsUpDisplay -exists ("HUDCam"+$which)`)
+    headsUpDisplay -remove ("HUDCam"+$which);
+else
+    headsUpDisplay -section          $section
+                   -block            `headsUpDisplay -nextFreeBlock $section`
+                   -blockSize        "small"
+                   -dataAlignment    "left"
+                   -dataWidth        50
+                   -label            ("Cam "+$which+":")
+                   -labelFontSize    "small"
+                   -labelWidth       100
+                   -command          $cmd
+                   -attachToRefresh 
+                   ("HUDCam"+$which);
+}
+
+global proc camHUDRemoveAll()
+{
+for ($which in {"Focal","TranslateY","Translate","Rotate"})
+    if (`headsUpDisplay -exists ("HUDCam"+$which)`)
+        headsUpDisplay -remove ("HUDCam"+$which);
+checkBoxGrp -e -valueArray4 0 0 0 0 camHUDCBG;
+}
+
+global proc camHUDSetAll()
+{
+camHUDRemoveAll();
+for ($which in {"focal","translateY","translate","rotate"})
+    camHUD($which);
+checkBoxGrp -e -valueArray4 1 1 1 1 camHUDCBG;
+}
+
+global proc camHUDRefresh()
+{
+for ($which in {"Focal","TranslateY","Translate","Rotate"})
+    if (`headsUpDisplay -exists ("HUDCam"+$which)`)
+        headsUpDisplay -remove ("HUDCam"+$which);
+for ($i=1;$i<=4;$i++)
+    if (eval("checkBoxGrp -q -value"+$i+" camHUDCBG"))
+        camHUD(eval("checkBoxGrp -q -label"+$i+" camHUDCBG"));
+}
+
+global proc cameraHUD()
+{
+if (`window -exists camHUD`)
+    {
+    deleteUI -window camHUD;
+    if (`windowPref -exists camHUD`)
+        windowPref -ra camHUD;
+    }
+window -toolbox 1 -title "Camera Heads-up Displayer" -menuBar 1 -mnb 0 -mxb 0 -s 0 -rtf 1 camHUD;
+    menu -l "Help" -helpMenu 1;
+        menuItem -l "About" 
+        -c "confirmDialog -m \"Camera Heads-up Displayer\\nAuthor: WangHuan\\nVersion: 1.0\\nDate: 04/23/11\"";
+    columnLayout -adj 1 -columnAttach "both" 5 -rowSpacing 5;
+        intSliderGrp -l "Display Section:" -field true -min 0 -max 9 -value 3 -step 1 
+            -cw3 120 80 150 -cat 1 "right" 5 camHUDISG;
+        checkBoxGrp -numberOfCheckBoxes 4 -label "Heads Up Display:" 
+            -labelArray4 "focal" "translateY" "translate" "rotate" 
+            -v1 `headsUpDisplay -exists HUDCamFocal`
+            -v2 `headsUpDisplay -exists HUDCamTranslateY`
+            -v3 `headsUpDisplay -exists HUDCamTranslate`
+            -v4 `headsUpDisplay -exists HUDCamRotate`
+            -cc1 "camHUD(\"focal\")"
+            -cc2 "camHUD(\"translateY\")"
+            -cc3 "camHUD(\"translate\")"
+            -cc4 "camHUD(\"rotate\")"
+            -cw5 120 60 80 80 80 -cat 1 "right" 5 camHUDCBG;
+        rowLayout -numberOfColumns 3 -columnWidth3 120 140 160
+            -columnAttach 1 "right" 5
+            -columnAttach 2 "both" 0
+            -columnAttach 3 "both" 0;
+            button -l "Refresh" -c "camHUDRefresh()";
+            button -l "Display All" -c "camHUDSetAll()";
+            button -l "Remove Al" -c "camHUDRemoveAll()";
+showWindow camHUD;
+}
+
+cameraHUD;
