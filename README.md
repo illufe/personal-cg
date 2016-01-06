@@ -6,5 +6,5 @@ This repo is for demonstration purpose.
 - scripts/maya: Maya tools in Python for animators.
 - scripts/mel: some old MEL scripts for layout artists.
 - scripts/mobu: MotionBuilder scripts to assist mocap retargeting.
-- snapshots: screenshots of layout/matchmoving tools developed in Base FX.
+- snapshots: screenshots of tools developed in Base FX and Light Chaser Animation.
 - plugins: Maya deformer developed with the C++ API.
